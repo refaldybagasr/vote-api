@@ -11,7 +11,7 @@ const booleanFromString = z.preprocess(
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    PORT: z.coerce.number().int().positive().default(3000),
+    PORT: z.coerce.number().int().min(0).default(3000),
 
     MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
     MONGO_PORT: z.coerce.number().int().positive().default(27017),
