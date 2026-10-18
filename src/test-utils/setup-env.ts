@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { clearDatabase } from './clear-database';
-import { syncAllIndexes } from './sync-indexes';
+import { syncAllIndexes } from '../lib/sync-indexes';
 
 beforeAll(async () => {
   const uri = process.env.MONGO_URI;
