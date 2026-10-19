@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import { bootstrapConfig } from '../src/config/bootstrap';
 import { configureMongoose } from '../src/lib/configure-mongoose';
