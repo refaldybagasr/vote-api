@@ -14,11 +14,15 @@ import { MongooseTransactionManager } from './modules/shared/transaction-manager
 import { createUserRouter } from './modules/users/user.routes';
 import { UserService } from './modules/users/user.service';
 import { UserMongoRepository } from './modules/users/user.repository';
+import { createVoteRouter } from './modules/votes/vote.routes';
+import { VoteMongoRepository } from './modules/votes/vote.repository';
+import { VoteService } from './modules/votes/vote.service';
 
 export interface Container {
   authRouter: Router;
   usersRouter: Router;
   candidatesRouter: Router;
+  votesRouter: Router;
   authenticate: RequestHandler;
 }
 
@@ -62,17 +66,24 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
     rateLimitWindowMs: config.LOGIN_RATE_LIMIT_WINDOW_MS,
   });
 
+  const candidateRepository = new CandidateMongoRepository();
+  const voteRepository = new VoteMongoRepository();
+
   const userService = new UserService({
     userRepository,
     refreshTokenRepository,
     transactionManager,
     bcryptCost: config.BCRYPT_COST,
+    hasVotedLookup: (userIds) => voteRepository.findVotedUserIds(userIds),
   });
 
   const usersRouter = createUserRouter({ userService, authenticate });
 
-  const candidateService = new CandidateService(new CandidateMongoRepository());
+  const candidateService = new CandidateService(candidateRepository);
   const candidatesRouter = createCandidateRouter({ candidateService, authenticate });
 
-  return { authRouter, usersRouter, candidatesRouter, authenticate };
+  const voteService = new VoteService({ candidateRepository, voteRepository, transactionManager });
+  const votesRouter = createVoteRouter({ voteService, authenticate });
+
+  return { authRouter, usersRouter, candidatesRouter, votesRouter, authenticate };
 }
