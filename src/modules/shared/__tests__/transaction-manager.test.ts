@@ -1,6 +1,18 @@
 import mongoose from 'mongoose';
 import { FakeTransactionManager } from '../fake-transaction-manager';
-import { MongooseTransactionManager } from '../transaction-manager';
+import { MongooseTransactionManager, sessionOptions } from '../transaction-manager';
+
+describe('sessionOptions', () => {
+  it('returns an empty object when no TxContext is given', () => {
+    expect(sessionOptions()).toEqual({});
+  });
+
+  it('returns a session option when a TxContext is given', () => {
+    const fakeSession = {} as mongoose.ClientSession;
+
+    expect(sessionOptions({ session: fakeSession })).toEqual({ session: fakeSession });
+  });
+});
 
 const txScratchSchema = new mongoose.Schema({ label: String });
 const TxScratchA = mongoose.model('TxScratchA', txScratchSchema);
