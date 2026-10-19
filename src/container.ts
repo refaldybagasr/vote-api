@@ -10,6 +10,9 @@ import { RefreshTokenMongoRepository } from './modules/auth/refresh-token.reposi
 import { createCandidateRouter } from './modules/candidates/candidate.routes';
 import { CandidateMongoRepository } from './modules/candidates/candidate.repository';
 import { CandidateService } from './modules/candidates/candidate.service';
+import { createResultsRouter } from './modules/results/results.routes';
+import { ResultsMongoRepository } from './modules/results/results.repository';
+import { ResultsService } from './modules/results/results.service';
 import { MongooseTransactionManager } from './modules/shared/transaction-manager';
 import { createUserRouter } from './modules/users/user.routes';
 import { UserService } from './modules/users/user.service';
@@ -23,6 +26,7 @@ export interface Container {
   usersRouter: Router;
   candidatesRouter: Router;
   votesRouter: Router;
+  resultsRouter: Router;
   authenticate: RequestHandler;
 }
 
@@ -85,5 +89,8 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
   const voteService = new VoteService({ candidateRepository, voteRepository, transactionManager });
   const votesRouter = createVoteRouter({ voteService, authenticate });
 
-  return { authRouter, usersRouter, candidatesRouter, votesRouter, authenticate };
+  const resultsService = new ResultsService(new ResultsMongoRepository());
+  const resultsRouter = createResultsRouter({ resultsService, authenticate });
+
+  return { authRouter, usersRouter, candidatesRouter, votesRouter, resultsRouter, authenticate };
 }

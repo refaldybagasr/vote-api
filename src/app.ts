@@ -16,6 +16,7 @@ export interface AppDeps {
   usersRouter?: Router;
   candidatesRouter?: Router;
   votesRouter?: Router;
+  resultsRouter?: Router;
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -51,6 +52,9 @@ export function createApp(deps: AppDeps): Express {
   }
   if (deps.votesRouter) {
     app.use('/api/votes', deps.votesRouter);
+  }
+  if (deps.resultsRouter) {
+    app.use('/api/results', deps.resultsRouter);
   }
 
   app.use(notFound);
