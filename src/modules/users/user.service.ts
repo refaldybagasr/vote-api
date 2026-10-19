@@ -13,6 +13,7 @@ export interface PublicUserListItem {
   isActive: boolean;
   hasVoted: boolean;
   createdAt: Date;
+  version: number;
 }
 
 export interface CreateUserRequest {
@@ -184,5 +185,6 @@ function toListItem(user: UserRecord, hasVoted: boolean): PublicUserListItem {
     isActive: user.isActive,
     hasVoted,
     createdAt: user.createdAt,
+    version: user.version,
   };
 }
