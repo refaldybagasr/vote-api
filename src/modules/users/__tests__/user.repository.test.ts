@@ -91,4 +91,84 @@ describe('UserMongoRepository', () => {
     const found = await repository.findById(created._id.toString());
     expect(found?.tokenVersion).toBe(1);
   });
+
+  it('creates a user and returns the record without a passwordHash leaking into callers by surprise', async () => {
+    const created = await repository.create({ username: 'created', passwordHash: 'hash', role: 'user' });
+
+    expect(created).toMatchObject({ username: 'created', role: 'user', isActive: true, version: 0 });
+    expect(created.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('lists users excluding soft-deleted ones, paginated', async () => {
+    for (let i = 0; i < 5; i += 1) {
+      await UserModel.create({
+        username: `listuser${i}`,
+        passwordHash: 'hash',
+        role: 'user',
+        isActive: true,
+        tokenVersion: 0,
+      });
+    }
+    await UserModel.create({
+      username: 'softdeleted',
+      passwordHash: 'hash',
+      role: 'user',
+      isActive: true,
+      tokenVersion: 0,
+      deletedAt: new Date(),
+    });
+
+    const page1 = await repository.list({ page: 1, limit: 3 });
+    const page2 = await repository.list({ page: 2, limit: 3 });
+
+    expect(page1.total).toBe(5);
+    expect(page1.items).toHaveLength(3);
+    expect(page2.items).toHaveLength(2);
+    expect([...page1.items, ...page2.items].some((u) => u.username === 'softdeleted')).toBe(false);
+  });
+
+  it('updates fields and bumps both version and tokenVersion atomically', async () => {
+    const created = await repository.create({ username: 'updateme', passwordHash: 'hash', role: 'user' });
+
+    const updated = await repository.update(created.id, created.version, { isActive: false });
+
+    expect(updated).toMatchObject({ isActive: false, version: 1, tokenVersion: 1 });
+  });
+
+  it('returns null when the supplied version is stale', async () => {
+    const created = await repository.create({ username: 'staleme', passwordHash: 'hash', role: 'user' });
+    await repository.update(created.id, created.version, { isActive: false });
+
+    const result = await repository.update(created.id, created.version, { role: 'admin' });
+
+    expect(result).toBeNull();
+  });
+
+  it('soft-deletes a user, setting deletedAt and bumping tokenVersion', async () => {
+    const created = await repository.create({ username: 'deleteme', passwordHash: 'hash', role: 'user' });
+
+    const result = await repository.softDelete(created.id);
+
+    expect(result).toBe(true);
+    const found = await UserModel.findById(created.id);
+    expect(found?.deletedAt).toBeInstanceOf(Date);
+    expect(found?.tokenVersion).toBe(1);
+  });
+
+  it('returns false when soft-deleting an already-deleted user', async () => {
+    const created = await repository.create({ username: 'deletetwice', passwordHash: 'hash', role: 'user' });
+    await repository.softDelete(created.id);
+
+    expect(await repository.softDelete(created.id)).toBe(false);
+  });
+
+  it('counts only active, non-deleted admins', async () => {
+    await repository.create({ username: 'admin1', passwordHash: 'hash', role: 'admin' });
+    await repository.create({ username: 'admin2', passwordHash: 'hash', role: 'admin' });
+    const disabledAdmin = await repository.create({ username: 'admin3', passwordHash: 'hash', role: 'admin' });
+    await repository.update(disabledAdmin.id, disabledAdmin.version, { isActive: false });
+    await repository.create({ username: 'regular', passwordHash: 'hash', role: 'user' });
+
+    expect(await repository.countActiveAdmins()).toBe(2);
+  });
 });

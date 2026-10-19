@@ -13,6 +13,7 @@ export interface AppDeps {
   trustProxy: boolean;
   isDbHealthy: () => boolean;
   authRouter?: Router;
+  usersRouter?: Router;
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -39,6 +40,9 @@ export function createApp(deps: AppDeps): Express {
 
   if (deps.authRouter) {
     app.use('/api/auth', deps.authRouter);
+  }
+  if (deps.usersRouter) {
+    app.use('/api/users', deps.usersRouter);
   }
 
   app.use(notFound);

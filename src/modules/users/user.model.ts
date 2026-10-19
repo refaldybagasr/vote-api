@@ -9,6 +9,8 @@ export interface UserDoc {
   isActive: boolean;
   deletedAt: Date | null;
   tokenVersion: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const userSchema = new mongoose.Schema<UserDoc>(

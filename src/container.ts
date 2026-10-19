@@ -8,10 +8,13 @@ import { createAuthRouter } from './modules/auth/auth.routes';
 import { AuthService } from './modules/auth/auth.service';
 import { RefreshTokenMongoRepository } from './modules/auth/refresh-token.repository';
 import { MongooseTransactionManager } from './modules/shared/transaction-manager';
+import { createUserRouter } from './modules/users/user.routes';
+import { UserService } from './modules/users/user.service';
 import { UserMongoRepository } from './modules/users/user.repository';
 
 export interface Container {
   authRouter: Router;
+  usersRouter: Router;
   authenticate: RequestHandler;
 }
 
@@ -55,5 +58,14 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
     rateLimitWindowMs: config.LOGIN_RATE_LIMIT_WINDOW_MS,
   });
 
-  return { authRouter, authenticate };
+  const userService = new UserService({
+    userRepository,
+    refreshTokenRepository,
+    transactionManager,
+    bcryptCost: config.BCRYPT_COST,
+  });
+
+  const usersRouter = createUserRouter({ userService, authenticate });
+
+  return { authRouter, usersRouter, authenticate };
 }
