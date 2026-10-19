@@ -1,5 +1,5 @@
 import cors from 'cors';
-import express, { type Express } from 'express';
+import express, { type Express, type Router } from 'express';
 import helmet from 'helmet';
 import type { Logger } from 'pino';
 import { createErrorHandler } from './middlewares/error-handler';
@@ -11,6 +11,7 @@ export interface AppDeps {
   frontendOrigin: string;
   trustProxy: boolean;
   isDbHealthy: () => boolean;
+  authRouter?: Router;
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -33,6 +34,10 @@ export function createApp(deps: AppDeps): Express {
     const healthy = deps.isDbHealthy();
     res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'unavailable' });
   });
+
+  if (deps.authRouter) {
+    app.use('/api/auth', deps.authRouter);
+  }
 
   app.use(notFound);
   app.use(createErrorHandler(deps.logger, deps.nodeEnv));
