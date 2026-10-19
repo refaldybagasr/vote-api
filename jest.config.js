@@ -3,7 +3,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testTimeout: 30000,
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/scripts'],
   testPathIgnorePatterns: ['/node_modules/'],
   globalSetup: '<rootDir>/src/test-utils/global-setup.ts',
   globalTeardown: '<rootDir>/src/test-utils/global-teardown.ts',
