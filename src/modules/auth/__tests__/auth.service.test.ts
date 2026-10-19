@@ -1,21 +1,28 @@
 import { AppError } from '../../../lib/errors';
 import { ManualClock } from '../../../lib/clock';
 import { hashPassword } from '../../../lib/password';
+import { FakeTransactionManager } from '../../shared/fake-transaction-manager';
 import { FakeUserRepository } from '../../users/fake-user-repository';
 import type { UserRecord } from '../../users/user.repository';
+import { FakeRefreshTokenRepository } from '../fake-refresh-token-repository';
 import { AuthService } from '../auth.service';
 
 const JWT_CONFIG_BASE = { secret: 'a-sufficiently-long-test-secret', issuer: 'vote-api', audience: 'vote-web' };
 
 async function buildService(users: UserRecord[], clock = new ManualClock(new Date('2026-01-01T00:00:00.000Z'))) {
   const dummyPasswordHash = await hashPassword('dummy-password-for-timing-safety', 4);
+  const userRepository = new FakeUserRepository(users);
+  const refreshTokenRepository = new FakeRefreshTokenRepository();
   const service = new AuthService({
-    userRepository: new FakeUserRepository(users),
+    userRepository,
+    refreshTokenRepository,
+    transactionManager: new FakeTransactionManager(),
     jwtConfig: { ...JWT_CONFIG_BASE, clock },
     accessTokenTtlSeconds: 900,
+    refreshTokenTtlDays: 7,
     dummyPasswordHash,
   });
-  return { service, clock };
+  return { service, clock, userRepository, refreshTokenRepository };
 }
 
 async function makeUser(overrides: Partial<UserRecord> = {}): Promise<UserRecord> {
@@ -32,13 +39,14 @@ async function makeUser(overrides: Partial<UserRecord> = {}): Promise<UserRecord
 }
 
 describe('AuthService.login', () => {
-  it('returns an access token and the public user on success', async () => {
+  it('returns an access token, a refresh token and the public user on success', async () => {
     const user = await makeUser();
     const { service } = await buildService([user]);
 
     const result = await service.login('admin', 'correct-password');
 
     expect(result.accessToken).toBeTruthy();
+    expect(result.refreshToken).toBeTruthy();
     expect(result.user).toEqual({ id: user.id, username: user.username, role: user.role });
   });
 
@@ -86,3 +94,66 @@ describe('AuthService.login', () => {
   });
 });
 
+describe('AuthService.refresh', () => {
+  it('rotates the token and returns a new access + refresh token', async () => {
+    const user = await makeUser();
+    const { service } = await buildService([user]);
+    const { refreshToken } = await service.login('admin', 'correct-password');
+
+    const result = await service.refresh(refreshToken);
+
+    expect(result.accessToken).toBeTruthy();
+    expect(result.refreshToken).toBeTruthy();
+    expect(result.refreshToken).not.toBe(refreshToken);
+  });
+
+  it('rejects reusing the same token after it has been rotated', async () => {
+    const user = await makeUser();
+    const { service } = await buildService([user]);
+    const { refreshToken } = await service.login('admin', 'correct-password');
+    await service.refresh(refreshToken);
+
+    await expect(service.refresh(refreshToken)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('rejects an unknown token', async () => {
+    const { service } = await buildService([]);
+
+    await expect(service.refresh('not-a-real-token')).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('rejects a token belonging to a now-disabled user', async () => {
+    const user = await makeUser();
+    const { service } = await buildService([user]);
+    const { refreshToken } = await service.login('admin', 'correct-password');
+
+    user.isActive = false;
+
+    await expect(service.refresh(refreshToken)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+});
+
+describe('AuthService.logout', () => {
+  it('is a no-op (does not throw) when no token is given', async () => {
+    const { service } = await buildService([]);
+
+    await expect(service.logout(undefined)).resolves.toBeUndefined();
+  });
+
+  it('is a no-op (does not throw) for an unrecognized token', async () => {
+    const { service } = await buildService([]);
+
+    await expect(service.logout('not-a-real-token')).resolves.toBeUndefined();
+  });
+
+  it('revokes the token and bumps the tokenVersion so the old access token becomes invalid', async () => {
+    const user = await makeUser();
+    const { service, userRepository } = await buildService([user]);
+    const { refreshToken } = await service.login('admin', 'correct-password');
+
+    await service.logout(refreshToken);
+
+    await expect(service.refresh(refreshToken)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    expect((await userRepository.findById(user.id))?.tokenVersion).toBe(1);
+  });
+});

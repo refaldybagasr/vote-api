@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { sessionOptions, type TxContext } from '../shared/transaction-manager';
 import type { UserDoc, UserRole } from './user.model';
 import { UserModel } from './user.model';
 
@@ -15,6 +16,7 @@ export interface UserRecord {
 export interface UserRepository {
   findByUsername(username: string): Promise<UserRecord | null>;
   findById(id: string): Promise<UserRecord | null>;
+  incrementTokenVersion(id: string, ctx?: TxContext): Promise<void>;
 }
 
 export class UserMongoRepository implements UserRepository {
@@ -29,6 +31,10 @@ export class UserMongoRepository implements UserRepository {
     }
     const doc = await UserModel.findById(id);
     return doc ? toRecord(doc) : null;
+  }
+
+  async incrementTokenVersion(id: string, ctx?: TxContext): Promise<void> {
+    await UserModel.updateOne({ _id: id }, { $inc: { tokenVersion: 1 } }, sessionOptions(ctx));
   }
 }
 

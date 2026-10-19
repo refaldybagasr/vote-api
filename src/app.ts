@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { type Express, type Router } from 'express';
 import helmet from 'helmet';
@@ -29,6 +30,7 @@ export function createApp(deps: AppDeps): Express {
     }),
   );
   app.use(express.json({ limit: '10kb' }));
+  app.use(cookieParser());
 
   app.get('/health', (_req, res) => {
     const healthy = deps.isDbHealthy();

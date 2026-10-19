@@ -3,12 +3,19 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { Request } from 'express';
 import { validate } from '../../middlewares/validate';
 import type { AuthService } from './auth.service';
-import { createLoginHandler } from './auth.controller';
+import {
+  createLoginHandler,
+  createLogoutHandler,
+  createRefreshHandler,
+  type CookieOptions,
+} from './auth.controller';
 import { loginSchema } from './login.schema';
 
 export interface AuthRouterDeps {
   authService: AuthService;
   authenticate: RequestHandler;
+  requireAllowedOrigin: RequestHandler;
+  cookieOptions: CookieOptions;
   rateLimitMax: number;
   rateLimitWindowMs: number;
 }
@@ -30,7 +37,18 @@ export function createAuthRouter(deps: AuthRouterDeps): Router {
     },
   });
 
-  router.post('/login', loginRateLimiter, validate({ body: loginSchema }), createLoginHandler(deps.authService));
+  router.post(
+    '/login',
+    loginRateLimiter,
+    validate({ body: loginSchema }),
+    createLoginHandler(deps.authService, deps.cookieOptions),
+  );
+  router.post(
+    '/refresh',
+    deps.requireAllowedOrigin,
+    createRefreshHandler(deps.authService, deps.cookieOptions),
+  );
+  router.post('/logout', deps.requireAllowedOrigin, createLogoutHandler(deps.authService));
   router.get('/me', deps.authenticate, (req, res) => {
     res.status(200).json(req.auth);
   });

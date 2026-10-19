@@ -76,4 +76,19 @@ describe('UserMongoRepository', () => {
       }),
     ).rejects.toMatchObject({ code: 11000 });
   });
+
+  it('increments the tokenVersion', async () => {
+    const created = await UserModel.create({
+      username: 'incrementme',
+      passwordHash: 'hash',
+      role: 'user',
+      isActive: true,
+      tokenVersion: 0,
+    });
+
+    await repository.incrementTokenVersion(created._id.toString());
+
+    const found = await repository.findById(created._id.toString());
+    expect(found?.tokenVersion).toBe(1);
+  });
 });
