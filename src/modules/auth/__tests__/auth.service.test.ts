@@ -86,28 +86,3 @@ describe('AuthService.login', () => {
   });
 });
 
-describe('AuthService.getById', () => {
-  it('returns the public user for a valid, active user', async () => {
-    const user = await makeUser();
-    const { service } = await buildService([user]);
-
-    await expect(service.getById(user.id)).resolves.toEqual({
-      id: user.id,
-      username: user.username,
-      role: user.role,
-    });
-  });
-
-  it('rejects an unknown id', async () => {
-    const { service } = await buildService([]);
-
-    await expect(service.getById('does-not-exist')).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-  });
-
-  it('rejects a soft-deleted user', async () => {
-    const user = await makeUser({ deletedAt: new Date() });
-    const { service } = await buildService([user]);
-
-    await expect(service.getById(user.id)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
-  });
-});

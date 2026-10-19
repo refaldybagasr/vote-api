@@ -43,6 +43,7 @@ export function verifyAccessToken(token: string, config: JwtConfig): JwtClaims {
       issuer: config.issuer,
       audience: config.audience,
       clockTimestamp,
+      clockTolerance: 5,
     });
   } catch (error) {
     throw new InvalidAccessTokenError(error instanceof Error ? error.message : 'Invalid token');

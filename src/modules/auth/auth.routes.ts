@@ -1,15 +1,14 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { Request } from 'express';
-import type { JwtConfig } from '../../lib/jwt';
 import { validate } from '../../middlewares/validate';
 import type { AuthService } from './auth.service';
-import { createLoginHandler, createMeHandler } from './auth.controller';
+import { createLoginHandler } from './auth.controller';
 import { loginSchema } from './login.schema';
 
 export interface AuthRouterDeps {
   authService: AuthService;
-  jwtConfig: JwtConfig;
+  authenticate: RequestHandler;
   rateLimitMax: number;
   rateLimitWindowMs: number;
 }
@@ -32,7 +31,9 @@ export function createAuthRouter(deps: AuthRouterDeps): Router {
   });
 
   router.post('/login', loginRateLimiter, validate({ body: loginSchema }), createLoginHandler(deps.authService));
-  router.get('/me', createMeHandler(deps.authService, deps.jwtConfig));
+  router.get('/me', deps.authenticate, (req, res) => {
+    res.status(200).json(req.auth);
+  });
 
   return router;
 }

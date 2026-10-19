@@ -3,6 +3,7 @@ import request from 'supertest';
 import { ManualClock } from '../../../lib/clock';
 import { hashPassword } from '../../../lib/password';
 import { createTestUser } from '../../../test-utils/user-factory';
+import { createAuthenticate } from '../../../middlewares/authenticate';
 import { UserMongoRepository } from '../../users/user.repository';
 import { AuthService } from '../auth.service';
 import { createAuthRouter } from '../auth.routes';
@@ -17,9 +18,10 @@ async function buildApp(options: { rateLimitMax?: number; clock?: ManualClock } 
   const clock = options.clock ?? new ManualClock(new Date('2026-01-01T00:00:00.000Z'));
   const jwtConfig = { ...JWT_CONFIG_BASE, clock };
   const dummyPasswordHash = await hashPassword('dummy-password-for-timing-safety', 4);
+  const userRepository = new UserMongoRepository();
 
   const authService = new AuthService({
-    userRepository: new UserMongoRepository(),
+    userRepository,
     jwtConfig,
     accessTokenTtlSeconds: 900,
     dummyPasswordHash,
@@ -31,7 +33,7 @@ async function buildApp(options: { rateLimitMax?: number; clock?: ManualClock } 
     '/api/auth',
     createAuthRouter({
       authService,
-      jwtConfig,
+      authenticate: createAuthenticate(userRepository, jwtConfig),
       rateLimitMax: options.rateLimitMax ?? 100,
       rateLimitWindowMs: 60_000,
     }),
