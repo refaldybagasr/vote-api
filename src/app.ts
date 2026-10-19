@@ -14,6 +14,7 @@ export interface AppDeps {
   isDbHealthy: () => boolean;
   authRouter?: Router;
   usersRouter?: Router;
+  candidatesRouter?: Router;
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -43,6 +44,9 @@ export function createApp(deps: AppDeps): Express {
   }
   if (deps.usersRouter) {
     app.use('/api/users', deps.usersRouter);
+  }
+  if (deps.candidatesRouter) {
+    app.use('/api/candidates', deps.candidatesRouter);
   }
 
   app.use(notFound);

@@ -27,6 +27,7 @@ export async function startServer(): Promise<Server> {
     isDbHealthy: () => mongoose.connection.readyState === 1,
     authRouter: container.authRouter,
     usersRouter: container.usersRouter,
+    candidatesRouter: container.candidatesRouter,
   });
 
   const server = app.listen(config.PORT, () => {
