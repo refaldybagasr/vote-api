@@ -11,3 +11,19 @@ export function createListCandidatesHandler(service: CandidateService) {
     }
   };
 }
+
+export function createAddCandidateHandler(service: CandidateService) {
+  return async function addCandidate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { name } = req.body as { name: string };
+      const auth = req.auth;
+      if (!auth) {
+        throw new Error('authenticate middleware did not attach req.auth');
+      }
+      const candidate = await service.create(name, auth.id);
+      res.status(201).json(candidate);
+    } catch (error) {
+      next(error);
+    }
+  };
+}
