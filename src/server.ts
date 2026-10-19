@@ -28,6 +28,7 @@ export async function startServer(): Promise<Server> {
     authRouter: container.authRouter,
     usersRouter: container.usersRouter,
     candidatesRouter: container.candidatesRouter,
+    votesRouter: container.votesRouter,
   });
 
   const server = app.listen(config.PORT, () => {
