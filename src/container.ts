@@ -1,13 +1,15 @@
-import type { Router } from 'express';
+import type { RequestHandler, Router } from 'express';
 import type { AppConfig } from './config/schema';
 import { systemClock } from './lib/clock';
 import { hashPassword } from './lib/password';
+import { createAuthenticate } from './middlewares/authenticate';
 import { createAuthRouter } from './modules/auth/auth.routes';
 import { AuthService } from './modules/auth/auth.service';
 import { UserMongoRepository } from './modules/users/user.repository';
 
 export interface Container {
   authRouter: Router;
+  authenticate: RequestHandler;
 }
 
 const DUMMY_PASSWORD = 'dummy-password-for-timing-safety';
@@ -23,6 +25,8 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
     clock: systemClock,
   };
 
+  const authenticate = createAuthenticate(userRepository, jwtConfig);
+
   const authService = new AuthService({
     userRepository,
     jwtConfig,
@@ -32,10 +36,10 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
 
   const authRouter = createAuthRouter({
     authService,
-    jwtConfig,
+    authenticate,
     rateLimitMax: config.LOGIN_RATE_LIMIT_MAX,
     rateLimitWindowMs: config.LOGIN_RATE_LIMIT_WINDOW_MS,
   });
 
-  return { authRouter };
+  return { authRouter, authenticate };
 }

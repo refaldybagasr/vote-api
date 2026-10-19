@@ -48,14 +48,6 @@ export class AuthService {
 
     return { accessToken, user: toPublicUser(user.id, user.username, user.role) };
   }
-
-  async getById(id: string): Promise<PublicUser> {
-    const user = await this.deps.userRepository.findById(id);
-    if (!user || user.deletedAt) {
-      throw new AppError('UNAUTHORIZED', 401, 'User not found');
-    }
-    return toPublicUser(user.id, user.username, user.role);
-  }
 }
 
 function toPublicUser(id: string, username: string, role: string): PublicUser {

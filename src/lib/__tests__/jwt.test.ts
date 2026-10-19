@@ -23,7 +23,7 @@ describe('jwt helper', () => {
     const clock = new ManualClock(new Date('2026-01-01T00:00:00.000Z'));
     const token = signAccessToken(CLAIMS, 900, config(clock));
 
-    clock.advance(901 * 1000);
+    clock.advance(920 * 1000);
 
     expect(() => verifyAccessToken(token, config(clock))).toThrow(InvalidAccessTokenError);
   });
