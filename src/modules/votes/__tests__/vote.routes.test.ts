@@ -13,6 +13,7 @@ import { VoteModel } from '../vote.model';
 import { VoteMongoRepository } from '../vote.repository';
 import { VoteService } from '../vote.service';
 import { createVoteRouter } from '../vote.routes';
+import { createOpenApiRegistry } from '../../../docs/registry';
 
 const JWT_CONFIG_BASE = {
   secret: 'a-sufficiently-long-test-secret',
@@ -34,7 +35,11 @@ function buildApp() {
   app.use(express.json());
   app.use(
     '/api/votes',
-    createVoteRouter({ voteService, authenticate: createAuthenticate(userRepository, jwtConfig) }),
+    createVoteRouter({
+      voteService,
+      authenticate: createAuthenticate(userRepository, jwtConfig),
+      registry: createOpenApiRegistry(),
+    }),
   );
   app.use(
     (

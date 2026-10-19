@@ -9,6 +9,7 @@ import { RefreshTokenMongoRepository } from '../../auth/refresh-token.repository
 import { UserMongoRepository } from '../user.repository';
 import { UserService } from '../user.service';
 import { createUserRouter } from '../user.routes';
+import { createOpenApiRegistry } from '../../../docs/registry';
 
 const JWT_CONFIG_BASE = {
   secret: 'a-sufficiently-long-test-secret',
@@ -31,7 +32,11 @@ function buildApp() {
   app.use(express.json());
   app.use(
     '/api/users',
-    createUserRouter({ userService, authenticate: createAuthenticate(userRepository, jwtConfig) }),
+    createUserRouter({
+      userService,
+      authenticate: createAuthenticate(userRepository, jwtConfig),
+      registry: createOpenApiRegistry(),
+    }),
   );
   app.use(
     (

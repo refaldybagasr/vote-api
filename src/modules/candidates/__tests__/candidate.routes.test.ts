@@ -10,6 +10,7 @@ import { CandidateModel } from '../candidate.model';
 import { CandidateMongoRepository } from '../candidate.repository';
 import { CandidateService } from '../candidate.service';
 import { createCandidateRouter } from '../candidate.routes';
+import { createOpenApiRegistry } from '../../../docs/registry';
 
 const JWT_CONFIG_BASE = {
   secret: 'a-sufficiently-long-test-secret',
@@ -26,7 +27,11 @@ function buildApp() {
   const app = express();
   app.use(
     '/api/candidates',
-    createCandidateRouter({ candidateService, authenticate: createAuthenticate(userRepository, jwtConfig) }),
+    createCandidateRouter({
+      candidateService,
+      authenticate: createAuthenticate(userRepository, jwtConfig),
+      registry: createOpenApiRegistry(),
+    }),
   );
   app.use(
     (

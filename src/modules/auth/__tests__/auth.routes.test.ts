@@ -11,6 +11,7 @@ import { UserMongoRepository } from '../../users/user.repository';
 import { AuthService } from '../auth.service';
 import { RefreshTokenMongoRepository } from '../refresh-token.repository';
 import { createAuthRouter } from '../auth.routes';
+import { createOpenApiRegistry } from '../../../docs/registry';
 
 const JWT_CONFIG_BASE = {
   secret: 'a-sufficiently-long-test-secret',
@@ -48,6 +49,7 @@ async function buildApp(options: { rateLimitMax?: number; clock?: ManualClock } 
       cookieOptions: { secure: false, maxAgeMs: 7 * 24 * 60 * 60 * 1000 },
       rateLimitMax: options.rateLimitMax ?? 100,
       rateLimitWindowMs: 60_000,
+      registry: createOpenApiRegistry(),
     }),
   );
   app.use(

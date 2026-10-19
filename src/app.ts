@@ -17,6 +17,7 @@ export interface AppDeps {
   candidatesRouter?: Router;
   votesRouter?: Router;
   resultsRouter?: Router;
+  docsRouter?: Router | null;
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -55,6 +56,24 @@ export function createApp(deps: AppDeps): Express {
   }
   if (deps.resultsRouter) {
     app.use('/api/results', deps.resultsRouter);
+  }
+  if (deps.docsRouter) {
+    // Swagger UI needs an inline initializer script/styles; this CSP override only
+    // applies on this route and replaces (not appends to) the global helmet() header.
+    app.use(
+      '/api/docs',
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:'],
+          },
+        },
+      }),
+      deps.docsRouter,
+    );
   }
 
   app.use(notFound);
