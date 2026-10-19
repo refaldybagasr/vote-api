@@ -22,7 +22,7 @@ describe('UserService.create', () => {
 
     const user = await service.create({ username: 'newuser', password: 'password123', role: 'user' });
 
-    expect(user).toMatchObject({ username: 'newuser', role: 'user' });
+    expect(user).toMatchObject({ username: 'newuser', role: 'user', version: 0 });
     expect((user as unknown as { passwordHash?: string }).passwordHash).toBeUndefined();
   });
 
@@ -121,6 +121,18 @@ describe('UserService.update (last-admin protection, without a database)', () =>
 
     expect(await refreshTokenRepository.rotateByHash('abc', new Date())).toBeNull();
   });
+
+  it('returns the bumped version so callers can chain a second update', async () => {
+    const { service } = build();
+    const user = await service.create({ username: 'versioned', password: 'password123', role: 'user' });
+    expect(user.version).toBe(0);
+
+    const firstUpdate = await service.update(user.id, 0, { isActive: false }, 'requester-id');
+    expect(firstUpdate.version).toBe(1);
+
+    const secondUpdate = await service.update(user.id, firstUpdate.version, { isActive: true }, 'requester-id');
+    expect(secondUpdate.version).toBe(2);
+  });
 });
 
 describe('UserService.softDelete', () => {
@@ -177,6 +189,7 @@ describe('UserService.list', () => {
     const voterItem = items.find((item) => item.id === a.id);
     const nonVoterItem = items.find((item) => item.id === b.id);
     expect([voterItem?.hasVoted, nonVoterItem?.hasVoted]).toContain(true);
+    expect(items.every((item) => typeof item.version === 'number')).toBe(true);
   });
 
   it('defaults hasVoted to false when no lookup is injected', async () => {

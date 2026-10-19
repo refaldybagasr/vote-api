@@ -101,6 +101,9 @@ describe('GET /api/users', () => {
     expect(res.body.items.every((item: Record<string, unknown>) => item.passwordHash === undefined)).toBe(
       true,
     );
+    expect(res.body.items.every((item: Record<string, unknown>) => typeof item.version === 'number')).toBe(
+      true,
+    );
   });
 
   it.each(['abc', '-1', '9999'])('does not error for an out-of-range limit=%s', async (rawLimit) => {
@@ -128,7 +131,7 @@ describe('POST /api/users', () => {
       .send({ username: 'brandnew', password: 'password123', role: 'user' });
 
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ username: 'brandnew', role: 'user' });
+    expect(res.body).toMatchObject({ username: 'brandnew', role: 'user', version: 0 });
   });
 
   it('returns 409 USERNAME_TAKEN for a duplicate username with different casing', async () => {
@@ -198,6 +201,26 @@ describe('PATCH /api/users/:id', () => {
       .send({ version: 0, isActive: false });
 
     expect(res.status).toBe(404);
+  });
+
+  it('updates successfully using the version from the create/list response, and returns the bumped version', async () => {
+    const { app, jwtConfig } = buildApp();
+    const { user: admin } = await createTestUser({ username: 'admin9b', role: 'admin' });
+    const adminToken = await tokenFor(jwtConfig, admin._id.toString(), 'admin');
+
+    const created = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ username: 'realclient', password: 'password123', role: 'user' });
+    expect(created.body.version).toBe(0);
+
+    const res = await request(app)
+      .patch(`/api/users/${created.body.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ version: created.body.version, isActive: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ isActive: false, version: 1 });
   });
 
   it('returns 409 STALE_UPDATE for a stale version', async () => {
