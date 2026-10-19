@@ -25,6 +25,7 @@ function buildApp() {
   const candidateService = new CandidateService(new CandidateMongoRepository());
 
   const app = express();
+  app.use(express.json());
   app.use(
     '/api/candidates',
     createCandidateRouter({
@@ -72,6 +73,77 @@ describe('GET /api/candidates', () => {
     const { app } = buildApp();
 
     const res = await request(app).get('/api/candidates');
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('POST /api/candidates', () => {
+  it('lets an admin create a candidate, which then appears in GET /api/candidates', async () => {
+    const { app, jwtConfig } = buildApp();
+    const { user: admin } = await createTestUser({ username: 'admin10', role: 'admin' });
+    const adminToken = signAccessToken({ sub: admin._id.toString(), role: 'admin', tv: 0 }, 900, jwtConfig);
+
+    const res = await request(app)
+      .post('/api/candidates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Ayu Lestari' });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ name: 'Ayu Lestari' });
+
+    const list = await request(app).get('/api/candidates').set('Authorization', `Bearer ${adminToken}`);
+    expect(list.body).toEqual([{ id: res.body.id, name: 'Ayu Lestari' }]);
+  });
+
+  it('returns 409 CANDIDATE_NAME_TAKEN for a duplicate name (case/spacing-insensitive)', async () => {
+    const { app, jwtConfig } = buildApp();
+    const { user: admin } = await createTestUser({ username: 'admin11', role: 'admin' });
+    const adminToken = signAccessToken({ sub: admin._id.toString(), role: 'admin', tv: 0 }, 900, jwtConfig);
+    await request(app)
+      .post('/api/candidates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Budi Santoso' });
+
+    const res = await request(app)
+      .post('/api/candidates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: '  BUDI   santoso ' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('CANDIDATE_NAME_TAKEN');
+  });
+
+  it('returns 400 for an invalid name', async () => {
+    const { app, jwtConfig } = buildApp();
+    const { user: admin } = await createTestUser({ username: 'admin12', role: 'admin' });
+    const adminToken = signAccessToken({ sub: admin._id.toString(), role: 'admin', tv: 0 }, 900, jwtConfig);
+
+    const res = await request(app)
+      .post('/api/candidates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: '<script>' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 403 for a non-admin', async () => {
+    const { app, jwtConfig } = buildApp();
+    const { user } = await createTestUser({ username: 'notadmin' });
+    const token = signAccessToken({ sub: user._id.toString(), role: 'user', tv: 0 }, 900, jwtConfig);
+
+    const res = await request(app)
+      .post('/api/candidates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Someone' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 with no token', async () => {
+    const { app } = buildApp();
+
+    const res = await request(app).post('/api/candidates').send({ name: 'Someone' });
 
     expect(res.status).toBe(401);
   });
