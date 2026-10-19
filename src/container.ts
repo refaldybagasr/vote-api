@@ -1,5 +1,8 @@
 import type { RequestHandler, Router } from 'express';
+import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { AppConfig } from './config/schema';
+import { createOpenApiRegistry } from './docs/registry';
+import { createDocsRouter } from './docs/docs.routes';
 import { systemClock } from './lib/clock';
 import { hashPassword } from './lib/password';
 import { createAuthenticate } from './middlewares/authenticate';
@@ -27,13 +30,16 @@ export interface Container {
   candidatesRouter: Router;
   votesRouter: Router;
   resultsRouter: Router;
+  docsRouter: Router | null;
   authenticate: RequestHandler;
+  openApiRegistry: OpenAPIRegistry;
 }
 
 const DUMMY_PASSWORD = 'dummy-password-for-timing-safety';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export async function buildContainer(config: AppConfig): Promise<Container> {
+  const registry = createOpenApiRegistry();
   const userRepository = new UserMongoRepository();
   const refreshTokenRepository = new RefreshTokenMongoRepository();
   const transactionManager = new MongooseTransactionManager();
@@ -68,6 +74,7 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
     },
     rateLimitMax: config.LOGIN_RATE_LIMIT_MAX,
     rateLimitWindowMs: config.LOGIN_RATE_LIMIT_WINDOW_MS,
+    registry,
   });
 
   const candidateRepository = new CandidateMongoRepository();
@@ -81,16 +88,27 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
     hasVotedLookup: (userIds) => voteRepository.findVotedUserIds(userIds),
   });
 
-  const usersRouter = createUserRouter({ userService, authenticate });
+  const usersRouter = createUserRouter({ userService, authenticate, registry });
 
   const candidateService = new CandidateService(candidateRepository);
-  const candidatesRouter = createCandidateRouter({ candidateService, authenticate });
+  const candidatesRouter = createCandidateRouter({ candidateService, authenticate, registry });
 
   const voteService = new VoteService({ candidateRepository, voteRepository, transactionManager });
-  const votesRouter = createVoteRouter({ voteService, authenticate });
+  const votesRouter = createVoteRouter({ voteService, authenticate, registry });
 
   const resultsService = new ResultsService(new ResultsMongoRepository());
-  const resultsRouter = createResultsRouter({ resultsService, authenticate });
+  const resultsRouter = createResultsRouter({ resultsService, authenticate, registry });
 
-  return { authRouter, usersRouter, candidatesRouter, votesRouter, resultsRouter, authenticate };
+  const docsRouter = config.DOCS_ENABLED ? createDocsRouter(registry) : null;
+
+  return {
+    authRouter,
+    usersRouter,
+    candidatesRouter,
+    votesRouter,
+    resultsRouter,
+    docsRouter,
+    authenticate,
+    openApiRegistry: registry,
+  };
 }
