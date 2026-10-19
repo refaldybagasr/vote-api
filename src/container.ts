@@ -7,6 +7,9 @@ import { requireAllowedOrigin } from './middlewares/require-allowed-origin';
 import { createAuthRouter } from './modules/auth/auth.routes';
 import { AuthService } from './modules/auth/auth.service';
 import { RefreshTokenMongoRepository } from './modules/auth/refresh-token.repository';
+import { createCandidateRouter } from './modules/candidates/candidate.routes';
+import { CandidateMongoRepository } from './modules/candidates/candidate.repository';
+import { CandidateService } from './modules/candidates/candidate.service';
 import { MongooseTransactionManager } from './modules/shared/transaction-manager';
 import { createUserRouter } from './modules/users/user.routes';
 import { UserService } from './modules/users/user.service';
@@ -15,6 +18,7 @@ import { UserMongoRepository } from './modules/users/user.repository';
 export interface Container {
   authRouter: Router;
   usersRouter: Router;
+  candidatesRouter: Router;
   authenticate: RequestHandler;
 }
 
@@ -67,5 +71,8 @@ export async function buildContainer(config: AppConfig): Promise<Container> {
 
   const usersRouter = createUserRouter({ userService, authenticate });
 
-  return { authRouter, usersRouter, authenticate };
+  const candidateService = new CandidateService(new CandidateMongoRepository());
+  const candidatesRouter = createCandidateRouter({ candidateService, authenticate });
+
+  return { authRouter, usersRouter, candidatesRouter, authenticate };
 }
