@@ -12,6 +12,7 @@ import { VoteModel } from '../../votes/vote.model';
 import { ResultsMongoRepository } from '../results.repository';
 import { ResultsService } from '../results.service';
 import { createResultsRouter } from '../results.routes';
+import { createOpenApiRegistry } from '../../../docs/registry';
 
 const JWT_CONFIG_BASE = {
   secret: 'a-sufficiently-long-test-secret',
@@ -28,7 +29,11 @@ function buildApp() {
   const app = express();
   app.use(
     '/api/results',
-    createResultsRouter({ resultsService, authenticate: createAuthenticate(userRepository, jwtConfig) }),
+    createResultsRouter({
+      resultsService,
+      authenticate: createAuthenticate(userRepository, jwtConfig),
+      registry: createOpenApiRegistry(),
+    }),
   );
   app.use(
     (
