@@ -40,4 +40,48 @@ describe('CandidateMongoRepository', () => {
       CandidateModel.create({ displayName: 'Dup Again', normalizedName: 'dup', createdBy }),
     ).rejects.toMatchObject({ code: 11000 });
   });
+
+  it('finds a candidate by id', async () => {
+    const createdBy = new mongoose.Types.ObjectId();
+    const created = await CandidateModel.create({ displayName: 'Findme', normalizedName: 'findme', createdBy });
+
+    expect(await repository.findById(created._id.toString())).toMatchObject({ displayName: 'Findme' });
+  });
+
+  it('returns null for an unknown or invalid id', async () => {
+    expect(await repository.findById(new mongoose.Types.ObjectId().toString())).toBeNull();
+    expect(await repository.findById('not-an-object-id')).toBeNull();
+  });
+
+  it('finds a candidate by normalizedName', async () => {
+    const createdBy = new mongoose.Types.ObjectId();
+    await CandidateModel.create({ displayName: 'Normalized', normalizedName: 'normalized', createdBy });
+
+    expect(await repository.findByNormalizedName('normalized')).toMatchObject({ displayName: 'Normalized' });
+  });
+
+  it('returns null from findByNormalizedName when nothing matches', async () => {
+    expect(await repository.findByNormalizedName('nope')).toBeNull();
+  });
+
+  describe('upsertByNormalizedName', () => {
+    it('creates a new candidate when none exists yet', async () => {
+      const createdBy = new mongoose.Types.ObjectId().toString();
+
+      const candidate = await repository.upsertByNormalizedName('newname', 'NewName', createdBy);
+
+      expect(candidate.displayName).toBe('NewName');
+      expect(await CandidateModel.countDocuments({ normalizedName: 'newname' })).toBe(1);
+    });
+
+    it('returns the existing candidate without changing its displayName', async () => {
+      const createdBy = new mongoose.Types.ObjectId().toString();
+      await repository.upsertByNormalizedName('existing', 'Existing', createdBy);
+
+      const candidate = await repository.upsertByNormalizedName('existing', 'EXISTING (different casing)', createdBy);
+
+      expect(candidate.displayName).toBe('Existing');
+      expect(await CandidateModel.countDocuments({ normalizedName: 'existing' })).toBe(1);
+    });
+  });
 });
