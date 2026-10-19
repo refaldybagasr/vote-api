@@ -26,6 +26,7 @@ export const userListItemSchema = publicUserSchema.extend({
   isActive: z.boolean(),
   hasVoted: z.boolean(),
   createdAt: z.coerce.date(),
+  version: z.number(),
 });
 
 export const userListResponseSchema = z.object({

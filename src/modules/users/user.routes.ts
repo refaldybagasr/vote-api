@@ -41,6 +41,7 @@ const createdUserExample = {
   isActive: true,
   hasVoted: false,
   createdAt: '2026-01-01T00:00:00.000Z',
+  version: 0,
 };
 
 export function createUserRouter(deps: UserRouterDeps): Router {
